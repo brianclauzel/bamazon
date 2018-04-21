@@ -17,7 +17,7 @@ connection.connect(function(err){
 
     firstQuestion();
 
-    // connection.end();
+    
 });
 
 //test to see all of inventory and thread id
@@ -34,7 +34,7 @@ connection.query('SELECT * FROM products', function(error, results, fields) {
             console.log(results[i].product_name);
         }
 
-        connection.end();
+        
     });
 
 };
@@ -45,15 +45,12 @@ function firstQuestion() {
             type: "input",
             message: "What is the I.D. number of the item you would like to purchase",
             name: "id"
-        },
-        {
-            type: "input",
-            message: "How many of this item would you like to purchase?",
-            name: "quantity"
         }
     ]).then(function(answer) {
 
         connection.query("SELECT * FROM products", function(error, results) {
+
+            
 
             var chosenId;
             var isNotFound = true;
@@ -63,10 +60,12 @@ function firstQuestion() {
             }
 
             for (var i = 0; i < results.length; i++) {
+
                 
-                if (results[i].item_id === Number(answer.id) && results[i].stock_quantity >= Number(answer.quantity)) {
+                
+                if (results[i].item_id === Number(answer.id) && results[i].stock_quantity >= 1) {
                     chosenId = results[i];
-                    console.log(results[i].product_name + ", yes we have that in stock");
+                    console.log(results[i].product_name + ", yes we have that in stock. we have " + results[i].stock_quantity);
                     isNotFound = false;
                     productDetails(results[i]);
                 }
@@ -76,7 +75,7 @@ function firstQuestion() {
                     console.log("sorry we dont have that product");
                 }
             }
-            connection.end();
+            
         });
     });
 }
@@ -93,13 +92,52 @@ function productDetails(chosenItem) {
 
         inquirer.prompt([
             {
+                name: "decision",
                 type: "input",
-                message: "Would you like to purchase this item?",
-                name: "answer"
+                message: "Would you like to purchase this item?"
+            },
+            {
+                name: "amount",
+                type: "input",
+                message: "how many would you like to buy?"
             }
-        ]).then(function(error, answer) {
+        ]).then(function(answer) {
+           
+            try {
+
+            if (answer.decision === "yes" && answer.amount <= chosenItem.stock_quantity) {
+                updateInventory(chosenItem, answer);
+            }
+
+            else {
+                console.log("sorry we cant fulfill that order!");
+            }
+        }
+
+        catch (error) { 
+            console.error(error);
+
+        }
 
         });
-        
+
     });
 }
+
+
+function updateInventory(boughtItem, answer) {
+    
+    connection.query("UPDATE products SET stock_quantity = stock_quantity - " + answer.amount + " WHERE ?", {
+        item_id: boughtItem.item_id
+    }, function(error){
+
+        var total = answer.amount * boughtItem.price;
+
+        if(error) {
+            console.log(error);
+        }
+        console.log("your total is: " + total);
+        console.log("Thank you for the purchase!");
+    });
+
+};
